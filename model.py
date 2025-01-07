@@ -4,12 +4,13 @@ import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
-from transformers import BertModel,BertTokenizer
+from transformers import BertModel, BertTokenizer
 
-# Load the saved model
+# Path to the saved model weights
 model_path = 'Combine_best_model.pt'
 num_classes = 6
 
+# Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class MultimodalClassifier(nn.Module):
@@ -17,7 +18,7 @@ class MultimodalClassifier(nn.Module):
         super(MultimodalClassifier, self).__init__()
 
         # Image Model (ResNet-50)
-        self.image_model = models.resnet50(pretrained=True)
+        self.image_model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
         num_image_features = self.image_model.fc.in_features
         self.image_model.fc = nn.Sequential(
             nn.Linear(num_image_features, 512),
@@ -49,9 +50,16 @@ class MultimodalClassifier(nn.Module):
 
         return combined_logits
 
-# Load model
+# Load the model
 model = MultimodalClassifier()
-model.load_state_dict(torch.load(model_path, map_location=device))
+
+# Load model weights
+try:
+    weights = torch.load(model_path, map_location=device)
+    model.load_state_dict(weights)
+except Exception as e:
+    raise RuntimeError(f"Error loading model weights: {e}")
+
 model.to(device)
 model.eval()
 
@@ -63,7 +71,7 @@ transform_test = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-# Load tokenizer
+# Load the tokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 def test_model(image_path, tweet):
@@ -127,12 +135,13 @@ def test_folder(test_images_folder, test_tweets_folder):
 
     return results
 
-
 # Example usage
-test_images_folder = r"E:\Disaster\test_images"
-test_tweets_folder = r"E:\Disaster\test_tweet"
+if __name__ == "__main__":
+    # Update these paths as needed
+    test_images_folder = r"E:\Disaster\test_images"
+    test_tweets_folder = r"E:\Disaster\test_tweet"
 
-results = test_folder(test_images_folder, test_tweets_folder)
+    results = test_folder(test_images_folder, test_tweets_folder)
 
-for result in results:
-    print(f"Image: {result['image']}, Prediction: {result['prediction']}, Tweet File: {result['tweet_file']}")
+    for result in results:
+        print(f"Image: {result['image']}, Prediction: {result['prediction']}, Tweet File: {result['tweet_file']}")
